@@ -452,7 +452,7 @@ def _vanilla_greeks(S: float, K: float, T: float, r: float, sigma: float, phi: i
     delta = phi * norm.cdf(phi * d1)
     vega  = S * math.sqrt(T) * norm.pdf(d1)            # dV/d(sigma), per 1 contract
     theta = (-(S * norm.pdf(d1) * sigma) / (2 * math.sqrt(T))
-             - r * K * math.exp(-r * T) * norm.cdf(phi * d2)) / 365
+             - phi * r * K * math.exp(-r * T) * norm.cdf(phi * d2)) / 365
     gamma = norm.pdf(d1) / (S * sigma * math.sqrt(T))
     return {"delta": delta, "vega": vega, "theta_daily": theta, "gamma": gamma, "d1": d1}
 
@@ -483,8 +483,18 @@ def get_hedge(
 
     # --- Find nearest Deribit instrument ---
     instruments = deribit.get_instruments(contract.currency)
-    # Use calls for above-strike, puts for below-strike
-    inst_type = "call" if contract.direction == "above" else "put"
+
+    # Instrument type selection depends on hedge purpose:
+    #   Delta hedge: use OPPOSITE type to the binary so the hedge instrument is near/in-the-money
+    #     (same-type would be OTM → near-zero delta → impractically large position size)
+    #   Vega hedge: use SAME type (vega is well-behaved for either type; matches direction)
+    if hedge_type == "delta":
+        inst_type = "put" if contract.direction == "above" else "call"
+    else:
+        inst_type = "call" if contract.direction == "above" else "put"
+
+    inst_phi = 1 if inst_type == "call" else -1
+
     candidates = [i for i in instruments if i["option_type"] == inst_type]
     if not candidates:
         raise HTTPException(status_code=404, detail="No Deribit instruments available")
@@ -508,7 +518,7 @@ def get_hedge(
     T_deribit = max((best["expiration_timestamp"] - now_ms) / (1000 * 86400 * 365.25), 1e-6)
 
     hedge_iv = deribit.get_mark_iv(best["instrument_name"]) or sigma
-    vg = _vanilla_greeks(spot, best["strike"], T_deribit, RISK_FREE_RATE, hedge_iv, phi)
+    vg = _vanilla_greeks(spot, best["strike"], T_deribit, RISK_FREE_RATE, hedge_iv, inst_phi)
 
     # --- Get Deribit price (in USD) ---
     try:

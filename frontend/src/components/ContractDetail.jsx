@@ -4,8 +4,9 @@ import GreeksDashboard from "./GreeksDashboard";
 import SpreadChart from "./SpreadChart";
 import PayoffSurface from "./PayoffSurface";
 import HedgeCalculator from "./HedgeCalculator";
+import WhatIf from "./WhatIf";
 
-const TABS = ["Overview", "Payoff Surface", "Hedge Calculator"];
+const TABS = ["Overview", "Payoff Surface", "Hedge Calculator", "What-If"];
 
 function ProbBar({ label, value, color }) {
   return (
@@ -397,6 +398,9 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
         )}
         {activeTab === "Payoff Surface" && (
           <PayoffSurface marketId={marketId} />
+        )}
+        {activeTab === "What-If" && (
+          <WhatIf contract={contract} spotPrices={spotPrices} />
         )}
         {activeTab === "Hedge Calculator" && (
           <div>
