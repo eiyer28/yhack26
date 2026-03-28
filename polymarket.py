@@ -316,9 +316,9 @@ def get_crypto_markets(limit: int = 500) -> list[Contract]:
     return contracts
 
 
-def get_market_by_condition_id(condition_id: str) -> Contract | None:
-    """Fetch and parse a single market by its condition ID."""
-    raw = _gamma_get("/markets", {"conditionId": condition_id})
+def get_market_by_slug(slug: str) -> Contract | None:
+    """Fetch and parse a single market by its slug."""
+    raw = _gamma_get("/markets", {"slug": slug})
     markets = raw if isinstance(raw, list) else [raw]
     if not markets:
         return None

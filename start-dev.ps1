@@ -21,9 +21,22 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "
   npm run dev
 "
 
+param([switch]$Dashboard)
+
+if ($Dashboard) {
+  Start-Process powershell -ArgumentList "-NoExit", "-Command", "
+    cd '$root';
+    Write-Host 'Starting Streamlit dashboard...' -ForegroundColor Magenta;
+    uv run streamlit run dashboard.py --server.port 8501
+  "
+}
+
 Write-Host ""
 Write-Host "PolyGreeks starting up:" -ForegroundColor Green
-Write-Host "  Frontend -> http://localhost:5173" -ForegroundColor White
-Write-Host "  Backend  -> http://localhost:8000" -ForegroundColor White
+Write-Host "  Frontend  -> http://localhost:5173" -ForegroundColor White
+Write-Host "  Backend   -> http://localhost:8000" -ForegroundColor White
+if ($Dashboard) {
+  Write-Host "  Dashboard -> http://localhost:8501" -ForegroundColor Magenta
+}
 Write-Host ""
-Write-Host "Close the two terminal windows to stop." -ForegroundColor DarkGray
+Write-Host "Close the terminal windows to stop." -ForegroundColor DarkGray

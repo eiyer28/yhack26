@@ -42,7 +42,7 @@ def _cached(key: str, ttl: float, fn):
 # Raw API helpers
 # ---------------------------------------------------------------------------
 
-def _get(endpoint: str, params: dict) -> dict:
+def _get(endpoint: str, params: dict) -> dict:  # also used externally by server.py
     """GET a Deribit public endpoint, return the result field."""
     resp = _session.get(f"{BASE_URL}/{endpoint}", params=params, timeout=10)
     resp.raise_for_status()

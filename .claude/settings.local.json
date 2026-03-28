@@ -23,7 +23,20 @@
       "Bash(.venv/Scripts/python.exe polymarket.py 2>&1)",
       "Bash(git -C /Users/donnynguyen/Programos/yhack26 ls-files --others --exclude-standard frontend/)",
       "Bash(.venv/Scripts/python.exe -c \"import fastapi, uvicorn; print\\(''FastAPI'', fastapi.__version__, ''/ uvicorn'', uvicorn.__version__\\)\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const p = require\\(''./node_modules/react-plotly.js/package.json''\\); console.log\\(''react-plotly.js'', p.version\\)\")",
+      "Bash(curl -s \"http://localhost:8000/api/markets\")",
+      "Bash(node -e \"const d=require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\); const ms=JSON.parse\\(d\\); const m=ms.find\\(x=>x.question.includes\\(''''62,000''''\\)||x.question.includes\\(''''62000''''\\)\\); console.log\\(JSON.stringify\\(m,null,2\\)\\)\")",
+      "Bash(curl -s http://localhost:8000/api/markets)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"https://gamma-api.polymarket.com/markets?conditionId=0x9d8ec8ea84639f590012f6048dd0216a3685114234ac2ed0b3a2fef25741167a\")",
+      "Bash(curl -s \"https://gamma-api.polymarket.com/markets?condition_id=0x9d8ec8ea84639f590012f6048dd0216a3685114234ac2ed0b3a2fef25741167a\")",
+      "Bash(curl -s \"http://localhost:8000/api/markets/will-bitcoin-dip-to-64k-on-march-28/surface\")",
+      "Bash(curl -s \"http://localhost:8000/api/markets/will-bitcoin-dip-to-64k-on-march-28/history\")",
+      "Bash(npm uninstall:*)",
+      "Bash(curl -s \"http://localhost:8000/api/markets/will-bitcoin-dip-to-64k-on-march-28/surface-plot\")",
+      "WebFetch(domain:prediction.eashan-iyer.com)"
     ]
   }
 }

@@ -1,14 +1,9 @@
-import { useState } from "react";
-import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import GreeksDashboard from "./GreeksDashboard";
 import SpreadChart from "./SpreadChart";
 import PayoffSurface from "./PayoffSurface";
 import HedgeCalculator from "./HedgeCalculator";
-import {
-  PLACEHOLDER_SPREAD_HISTORY,
-  makePlaceholderPayoffSurface,
-  makePlaceholderHedge,
-} from "../placeholders";
 
 const TABS = ["Overview", "Payoff Surface", "Hedge Calculator"];
 
@@ -50,17 +45,63 @@ function ProbBar({ label, value, color }) {
   );
 }
 
+function Loading({ label }) {
+  return (
+    <div style={{ padding: "32px", textAlign: "center", color: "var(--text2)", fontSize: 13 }}>
+      {label}
+    </div>
+  );
+}
+
+function Empty({ label }) {
+  return (
+    <div style={{ padding: "32px", textAlign: "center", color: "var(--text2)", fontSize: 13 }}>
+      {label}
+    </div>
+  );
+}
+
 export default function ContractDetail({ contract, onBack, spotPrices }) {
   const [positionSize, setPositionSize] = useState(1000);
-  const [hedgeType, setHedgeType] = useState("delta");
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [hedgeType, setHedgeType]       = useState("delta");
+  const [activeTab, setActiveTab]       = useState("Overview");
 
-  // Build the greeks display object from real backend data, scaled to position size
+  const [history, setHistory]           = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [hedge, setHedge]               = useState(null);
+  const [hedgeLoading, setHedgeLoading] = useState(false);
+
+  const marketId = contract.id;
+
+  // Fetch history on mount (it's on the default Overview tab)
+  useEffect(() => {
+    setHistoryLoading(true);
+    fetch(`/api/markets/${marketId}/history`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => setHistory(d))
+      .catch(() => setHistory(null))
+      .finally(() => setHistoryLoading(false));
+  }, [marketId]);
+
+  // Fetch hedge whenever Hedge Calculator tab is active, or position size / type changes
+  useEffect(() => {
+    if (activeTab !== "Hedge Calculator") return;
+    setHedgeLoading(true);
+    setHedge(null);
+    fetch(`/api/markets/${marketId}/hedge?position_size=${positionSize}&hedge_type=${hedgeType}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => setHedge(d))
+      .catch(() => setHedge(null))
+      .finally(() => setHedgeLoading(false));
+  }, [activeTab, marketId, positionSize, hedgeType]);
+
+  // Build greeks display object from real backend data, scaled to position size
   const g = contract.greeks ?? {};
   const greeks = {
     delta:                g.delta        ?? 0,
     gamma:                g.gamma        ?? 0,
-    vega:                 (g.vega        ?? 0) / 100,  // backend: dV/dσ; display: per 1% vol
+    vega:                 (g.vega        ?? 0) / 100,
     theta_daily:          g.theta_daily  ?? 0,
     position_delta:       (g.delta       ?? 0) * positionSize,
     position_gamma:       (g.gamma       ?? 0) * positionSize,
@@ -73,9 +114,6 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
     d1:                   g.d1 ?? 0,
     d2:                   g.d2 ?? 0,
   };
-
-  const surface = makePlaceholderPayoffSurface();
-  const hedge = makePlaceholderHedge(contract, positionSize, hedgeType);
 
   const spread = contract.p_market - contract.p_model;
   const spreadAbs = Math.abs(spread);
@@ -340,12 +378,18 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             <GreeksDashboard greeks={greeks} contract={contract} />
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 24 }}>
-              <SpreadChart data={PLACEHOLDER_SPREAD_HISTORY} />
+              {historyLoading && <Loading label="Fetching price history..." />}
+              {!historyLoading && history && history.length > 0 && (
+                <SpreadChart data={history} />
+              )}
+              {!historyLoading && (!history || history.length === 0) && (
+                <Empty label="No price history available for this contract." />
+              )}
             </div>
           </div>
         )}
         {activeTab === "Payoff Surface" && (
-          <PayoffSurface surface={surface} entryPrice={contract.p_model} />
+          <PayoffSurface marketId={marketId} />
         )}
         {activeTab === "Hedge Calculator" && (
           <div>
@@ -355,21 +399,22 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
                   key={t}
                   onClick={() => setHedgeType(t)}
                   style={{
-                    background:
-                      hedgeType === t ? "var(--accent)" : "var(--surface)",
-                    border: `1px solid ${hedgeType === t ? "var(--accent)" : "var(--border)"}`,
+                    background:   hedgeType === t ? "var(--accent)" : "var(--surface)",
+                    border:       `1px solid ${hedgeType === t ? "var(--accent)" : "var(--border)"}`,
                     borderRadius: 6,
-                    padding: "6px 14px",
-                    color: hedgeType === t ? "#fff" : "var(--text2)",
-                    fontSize: 13,
-                    fontWeight: 600,
+                    padding:      "6px 14px",
+                    color:        hedgeType === t ? "#fff" : "var(--text2)",
+                    fontSize:     13,
+                    fontWeight:   600,
                   }}
                 >
                   {t.charAt(0).toUpperCase() + t.slice(1)}-Neutral
                 </button>
               ))}
             </div>
-            <HedgeCalculator hedge={hedge} contract={contract} />
+            {hedgeLoading && <Loading label="Computing hedge..." />}
+            {!hedgeLoading && hedge && <HedgeCalculator hedge={hedge} contract={contract} />}
+            {!hedgeLoading && !hedge && <Empty label="Could not compute hedge (no suitable Deribit instrument found)." />}
           </div>
         )}
       </div>

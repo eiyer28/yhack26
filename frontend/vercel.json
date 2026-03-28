@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://polygreeks-api.onrender.com/api/:path*",
+      "comment": "Update the destination URL to your actual Render service URL after deploying the backend"
+    }
+  ]
+}
