@@ -36,7 +36,8 @@
       "Bash(curl -s \"http://localhost:8000/api/markets/will-bitcoin-dip-to-64k-on-march-28/history\")",
       "Bash(npm uninstall:*)",
       "Bash(curl -s \"http://localhost:8000/api/markets/will-bitcoin-dip-to-64k-on-march-28/surface-plot\")",
-      "WebFetch(domain:prediction.eashan-iyer.com)"
+      "WebFetch(domain:prediction.eashan-iyer.com)",
+      "Bash(npm run:*)"
     ]
   }
 }
