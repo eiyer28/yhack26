@@ -376,7 +376,14 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
       >
         {activeTab === "Overview" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <GreeksDashboard greeks={greeks} contract={contract} />
+            {/* Greeks 2×2 grid + Payoff Surface side by side */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+              <GreeksDashboard greeks={greeks} contract={contract} />
+              <div>
+                <PayoffSurface marketId={marketId} />
+              </div>
+            </div>
+            {/* Spread history below */}
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 24 }}>
               {historyLoading && <Loading label="Fetching price history..." />}
               {!historyLoading && history && history.length > 0 && (

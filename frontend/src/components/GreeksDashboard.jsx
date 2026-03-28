@@ -206,7 +206,7 @@ export default function GreeksDashboard({ greeks, contract }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gridTemplateColumns: "1fr 1fr",
           gap: 12,
         }}
       >
