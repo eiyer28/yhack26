@@ -9,6 +9,8 @@ No API key required — all endpoints used are public.
 """
 
 import math
+import time
+import threading
 import requests
 from datetime import date, datetime, timezone
 
@@ -16,6 +18,24 @@ BASE_URL = "https://www.deribit.com/api/v2/public"
 
 # Reuse a single session for connection pooling
 _session = requests.Session()
+
+# ---------------------------------------------------------------------------
+# Simple TTL cache — avoids re-fetching instruments/smiles on every contract
+# ---------------------------------------------------------------------------
+
+_cache: dict = {}
+_cache_lock = threading.Lock()
+
+def _cached(key: str, ttl: float, fn):
+    """Return cached value if fresh, else call fn(), cache and return result."""
+    with _cache_lock:
+        entry = _cache.get(key)
+        if entry and (time.monotonic() - entry["ts"]) < ttl:
+            return entry["val"]
+    val = fn()
+    with _cache_lock:
+        _cache[key] = {"val": val, "ts": time.monotonic()}
+    return val
 
 
 # ---------------------------------------------------------------------------
@@ -40,25 +60,23 @@ def get_index_price(currency: str) -> float:
     ----------
     currency : "BTC" or "ETH"
     """
-    result = _get("get_index_price", {"index_name": f"{currency.lower()}_usd"})
-    return result["index_price"]
+    key = f"index_{currency.upper()}"
+    return _cached(key, ttl=30, fn=lambda: _get(
+        "get_index_price", {"index_name": f"{currency.lower()}_usd"}
+    )["index_price"])
 
 
 def get_instruments(currency: str) -> list[dict]:
     """
     All non-expired option instruments for a currency.
-
-    Each dict contains at minimum:
-        instrument_name       e.g. "BTC-27JUN25-80000-C"
-        strike                float
-        expiration_timestamp  milliseconds UTC
-        option_type           "call" or "put"
+    Cached for 60 s — shared across all contracts of the same currency.
     """
-    return _get("get_instruments", {
+    key = f"instruments_{currency.upper()}"
+    return _cached(key, ttl=60, fn=lambda: _get("get_instruments", {
         "currency": currency.upper(),
         "kind": "option",
         "expired": "false",
-    })
+    }))
 
 
 def get_mark_iv(instrument_name: str) -> float | None:
@@ -93,6 +111,8 @@ def _expiry_date(ts_ms: int) -> date:
 def get_expiry_smile(instruments: list[dict], expiry_ts_ms: int) -> dict[float, float]:
     """
     Fetch mark IVs for all call strikes at a given expiry.
+    Cached for 60 s — multiple contracts sharing the same expiry pay the
+    per-strike order book cost only once.
 
     Uses calls only for consistency (put-call parity means IVs should match,
     but calls tend to have better liquidity at higher strikes).
@@ -101,6 +121,11 @@ def get_expiry_smile(instruments: list[dict], expiry_ts_ms: int) -> dict[float, 
     -------
     {strike: iv_decimal}  — only strikes with a valid mark IV are included
     """
+    key = f"smile_{expiry_ts_ms}"
+    cached = _cache.get(key)
+    if cached and (time.monotonic() - cached["ts"]) < 60:
+        return cached["val"]
+
     candidates = [
         i for i in instruments
         if i["expiration_timestamp"] == expiry_ts_ms
@@ -113,6 +138,8 @@ def get_expiry_smile(instruments: list[dict], expiry_ts_ms: int) -> dict[float, 
         if iv is not None:
             smile[inst["strike"]] = iv
 
+    with _cache_lock:
+        _cache[key] = {"val": smile, "ts": time.monotonic()}
     return smile
 
 

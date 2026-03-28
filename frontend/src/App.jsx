@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { Search, TrendingUp, RefreshCw, Activity } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Search, RefreshCw, Activity } from "lucide-react";
 import ContractTable from "./components/ContractTable";
 import ContractDetail from "./components/ContractDetail";
-import { PLACEHOLDER_CONTRACTS, PLACEHOLDER_SPOT } from "./placeholders";
 import "./App.css";
 
-function Header({ onRefresh }) {
+function Header({ onRefresh, spotPrices, loading }) {
   return (
     <header
       style={{
@@ -46,9 +45,9 @@ function Header({ onRefresh }) {
         </span>
       </div>
 
-      {/* Live spot prices (placeholder) */}
+      {/* Live spot prices from Deribit */}
       <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-        {Object.entries(PLACEHOLDER_SPOT).map(([currency, price]) => (
+        {spotPrices && Object.entries(spotPrices).map(([currency, price]) => (
           <div
             key={currency}
             style={{ display: "flex", alignItems: "center", gap: 6 }}
@@ -57,8 +56,7 @@ function Header({ onRefresh }) {
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color:
-                  currency === "BTC" ? "#f7931a" : "#8ea9f0",
+                color: currency === "BTC" ? "#f7931a" : "#8ea9f0",
               }}
             >
               {currency}
@@ -70,16 +68,15 @@ function Header({ onRefresh }) {
                 fontWeight: 600,
               }}
             >
-              ${price.toLocaleString()}
+              {price != null ? `$${price.toLocaleString()}` : "—"}
             </span>
-            {/* TODO: replace with live Deribit spot */}
-            <span style={{ fontSize: 10, color: "var(--text2)" }}>(placeholder)</span>
           </div>
         ))}
 
         <button
           onClick={onRefresh}
-          title="Refresh data (placeholder)"
+          disabled={loading}
+          title="Refresh data"
           style={{
             background: "var(--surface2)",
             border: "1px solid var(--border)",
@@ -90,10 +87,12 @@ function Header({ onRefresh }) {
             alignItems: "center",
             gap: 5,
             fontSize: 12,
+            opacity: loading ? 0.5 : 1,
+            cursor: loading ? "default" : "pointer",
           }}
         >
-          <RefreshCw size={13} />
-          Refresh
+          <RefreshCw size={13} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
+          {loading ? "Loading…" : "Refresh"}
         </button>
       </div>
     </header>
@@ -222,30 +221,56 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("All");
   const [minSpread, setMinSpread] = useState(0);
+  const [contracts, setContracts] = useState([]);
+  const [spotPrices, setSpotPrices] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // TODO: replace with live API fetch from /api/markets
-  const filtered = PLACEHOLDER_CONTRACTS.filter((c) => {
-    const matchCurrency =
-      currencyFilter === "All" || c.currency === currencyFilter;
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [marketsRes, spotRes] = await Promise.all([
+        fetch("/api/markets"),
+        fetch("/api/spot"),
+      ]);
+      if (!marketsRes.ok) throw new Error(`Markets API error: ${marketsRes.status}`);
+      if (!spotRes.ok)   throw new Error(`Spot API error: ${spotRes.status}`);
+      const [marketsData, spotData] = await Promise.all([
+        marketsRes.json(),
+        spotRes.json(),
+      ]);
+      setContracts(marketsData);
+      setSpotPrices(spotData);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const filtered = contracts.filter((c) => {
+    const matchCurrency = currencyFilter === "All" || c.currency === currencyFilter;
     const matchQuery =
       !query ||
       c.question.toLowerCase().includes(query.toLowerCase()) ||
       c.currency.toLowerCase().includes(query.toLowerCase());
-    const matchSpread =
-      Math.abs(c.p_market - c.p_model) >= minSpread;
+    const matchSpread = Math.abs(c.p_market - c.p_model) >= minSpread;
     return matchCurrency && matchQuery && matchSpread;
   });
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Header onRefresh={() => {/* TODO: re-fetch from API */}} />
+      <Header onRefresh={fetchData} spotPrices={spotPrices} loading={loading} />
 
       <main style={{ flex: 1, padding: "24px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
         {selected ? (
           <ContractDetail
             contract={selected}
             onBack={() => setSelected(null)}
-            spotPrices={PLACEHOLDER_SPOT}
+            spotPrices={spotPrices}
           />
         ) : (
           <>
@@ -283,6 +308,17 @@ export default function App() {
 
             <Disclaimer />
 
+            {error && (
+              <div style={{
+                background: "#ff444422", border: "1px solid #ff4444",
+                borderRadius: 8, padding: "10px 16px", marginBottom: 16,
+                fontSize: 12, color: "#ff8888",
+              }}>
+                Backend error: {error}. Is the Python server running?{" "}
+                <code style={{ fontSize: 11 }}>uvicorn server:app --reload --port 8000</code>
+              </div>
+            )}
+
             <div
               style={{
                 background: "var(--surface)",
@@ -311,9 +347,8 @@ export default function App() {
               )}
             </div>
 
-            {/* Footer note */}
             <div style={{ marginTop: 16, fontSize: 11, color: "var(--text2)", textAlign: "center" }}>
-              Data sources: Polymarket Gamma API · Deribit public REST API · All data is placeholder until backend is connected.
+              Data sources: Polymarket Gamma + CLOB API · Deribit public REST API · Binary Black-Scholes pricing
             </div>
           </>
         )}

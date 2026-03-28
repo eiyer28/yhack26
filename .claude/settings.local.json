@@ -21,7 +21,9 @@
       "Bash(.venv/Scripts/python.exe -m pip install python-dotenv -q 2>&1)",
       "Bash(uv sync:*)",
       "Bash(.venv/Scripts/python.exe polymarket.py 2>&1)",
-      "Bash(git -C /Users/donnynguyen/Programos/yhack26 ls-files --others --exclude-standard frontend/)"
+      "Bash(git -C /Users/donnynguyen/Programos/yhack26 ls-files --others --exclude-standard frontend/)",
+      "Bash(.venv/Scripts/python.exe -c \"import fastapi, uvicorn; print\\(''FastAPI'', fastapi.__version__, ''/ uvicorn'', uvicorn.__version__\\)\")",
+      "Bash(ls:*)"
     ]
   }
 }

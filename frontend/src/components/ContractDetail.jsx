@@ -5,7 +5,6 @@ import SpreadChart from "./SpreadChart";
 import PayoffSurface from "./PayoffSurface";
 import HedgeCalculator from "./HedgeCalculator";
 import {
-  makePlaceholderGreeks,
   PLACEHOLDER_SPREAD_HISTORY,
   makePlaceholderPayoffSurface,
   makePlaceholderHedge,
@@ -56,7 +55,25 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
   const [hedgeType, setHedgeType] = useState("delta");
   const [activeTab, setActiveTab] = useState("Overview");
 
-  const greeks = makePlaceholderGreeks(contract, positionSize);
+  // Build the greeks display object from real backend data, scaled to position size
+  const g = contract.greeks ?? {};
+  const greeks = {
+    delta:                g.delta        ?? 0,
+    gamma:                g.gamma        ?? 0,
+    vega:                 (g.vega        ?? 0) / 100,  // backend: dV/dσ; display: per 1% vol
+    theta_daily:          g.theta_daily  ?? 0,
+    position_delta:       (g.delta       ?? 0) * positionSize,
+    position_gamma:       (g.gamma       ?? 0) * positionSize,
+    position_vega:        ((g.vega       ?? 0) / 100) * positionSize,
+    position_theta_daily: (g.theta_daily ?? 0) * positionSize,
+    position_value:       (contract.p_model ?? 0) * positionSize,
+    position_size:        positionSize,
+    sigma:                contract.sigma ?? 0,
+    sigma_source:         contract.vol_debug?.method ?? "Deribit",
+    d1:                   g.d1 ?? 0,
+    d2:                   g.d2 ?? 0,
+  };
+
   const surface = makePlaceholderPayoffSurface();
   const hedge = makePlaceholderHedge(contract, positionSize, hedgeType);
 
