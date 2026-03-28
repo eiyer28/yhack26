@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Binary cash-or-nothing options Greeks for Polymarket crypto contracts"
 requires-python = ">=3.13"
 dependencies = [
+    "python-dotenv>=1.0.0",
     "requests>=2.33.0",
     "scipy>=1.17.1",
 ]

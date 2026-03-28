@@ -14,7 +14,13 @@
       "WebFetch(domain:pypi.org)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:gamma-api.polymarket.com)",
-      "Bash(curl -s \"https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=3&tag_slug=crypto\")"
+      "Bash(curl -s \"https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=3&tag_slug=crypto\")",
+      "Bash(python:*)",
+      "Bash(.venv/Scripts/python.exe app.py --limit 100 --top 15 2>&1)",
+      "WebFetch(domain:docs.polymarket.com)",
+      "Bash(.venv/Scripts/python.exe -m pip install python-dotenv -q 2>&1)",
+      "Bash(uv sync:*)",
+      "Bash(.venv/Scripts/python.exe polymarket.py 2>&1)"
     ]
   }
 }
