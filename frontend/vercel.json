@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://yhack26-production-8d5a.up.railway.app/api/:path*"
+      "destination": "https://yhack26-production-8d5a.up.railway.app/api/:path*"
     }
   ]
 }
