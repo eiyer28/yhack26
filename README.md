@@ -2,17 +2,17 @@
 
 **TradFi-style risk analytics for Polymarket prediction markets.**
 
-PolyGreeks prices Polymarket crypto contracts as cash-or-nothing binary options, sources implied volatility from Deribit, and computes Greeks for any position. The spread between Polymarket's crowd-implied probability and the model-implied probability surfaces hedgeable mispricings — and the Greeks tell you exactly how to hedge them.
+PolyGreeks prices Polymarket crypto contracts as cash-or-nothing binary European options, sources implied volatility using real cryprocurrency prices, and computes the Greeks for any position. The spread between Polymarket's crowd-implied probability and the model-implied probability is a mispricing that can theoretically be exploited with dynamic hedging (as per Black-Scholes), and the Greeks tell you exactly how to construct these hedges.
 
 ---
 
 ## The core insight
 
-A Polymarket contract like *"BTC > $80k by June 27"* is structurally identical to a **cash-or-nothing binary call option**: it pays $1 if the condition is met, $0 otherwise. This means the full machinery of binary options pricing applies:
+A Polymarket contract like *"BTC > $80k by June 27"* is structurally identical to a cash-or-nothing binary call option: it pays $1 if the condition is met, $0 otherwise. This means that the variation of Black-Scholes that works for binary options pricing can be applied. Specifically,
 
 - The market price implies a probability: $p_{PM} = \text{live Polymarket price}$
-- Deribit's implied vol surface implies a separate model probability: $p_{BS} = \mathcal{N}(d_2)$
-- The spread $|p_{PM} - p_{BS}|$ is a measurable, hedgeable mispricing
+- Deribit's implied vol surface combined with options theory implies a separate model probability: $p_{BS} = \mathcal{N}(d_2)$
+- The spread $|p_{PM} - p_{BS}|$ is a measurable mispricing that can be exploited with hedging.
 
 Binary option pricing formula:
 
@@ -26,7 +26,7 @@ where $\phi = +1$ for a call (YES share) and $\phi = -1$ for a put (NO share).
 
 ## Greeks
 
-PolyGreeks computes four risk sensitivities for any position. These behave **qualitatively differently** from vanilla options — understanding the differences is the key to using this tool.
+PolyGreeks computes four risk sensitivities (Greeks) for any position. These are qualitatively differently from vanilla options, and so traditional options traders do not have intuition on these markets. This tool can be used to develop that intuition. Here is a table that adds more color as to the discrepancies between vanilla options pricing, and the binary options pricing we use to model polymarket.
 
 | Greek | Binary formula | Key difference from vanilla |
 |---|---|---|
@@ -37,16 +37,18 @@ PolyGreeks computes four risk sensitivities for any position. These behave **qua
 
 ### Greeks cross-sections
 
+We graph cross sections of the volatility surface to add visual color to the discrepencies between Greeks in polymarket and Greeks for traditional equities markets. 
+
 Cross-sections of each Greek vs underlying price $S$ and time to expiry $T$, for both binary and vanilla calls/puts. Parameters: $K=100$, $\sigma=0.3$, $r=0.05$, $T=0.5$ fixed for $S$-cross-sections, $S=100$ fixed for $T$-cross-sections.
 
 ![Greeks cross-sections: binary vs vanilla](greeks_plots.png)
 
-**What to notice:**
+**Key things to note:**
 
-- **Delta**: Binary call delta is bell-shaped and peaks ATM, then collapses. Vanilla delta is a monotone S-curve. As $T \to 0$ ATM, binary delta diverges — making near-expiry contracts extremely difficult to hedge.
-- **Gamma**: Binary gamma changes sign at the strike. OTM binary is long gamma (like vanilla), ITM binary is short gamma (unlike vanilla). Vanilla gamma is always positive.
-- **Vega**: Binary vega changes sign at ATM. If you hold a deep ITM YES share (say 85% probability), you have *negative* vega — rising volatility in BTC hurts your position by increasing the chance of falling back OTM. Vanilla vega is always positive.
-- **Theta**: Deep ITM binary positions have *positive* theta — time passing is good when you're nearly certain to be paid out. This is the basis for the theta-harvesting strategy.
+- **Delta**: Binary call delta is bell-shaped and peaks ATM, then collapses, while delta is a monotone S-curve. As $T \to 0$ ATM, binary delta diverges, which makes near-expiry contracts extremely difficult to hedge.
+- **Gamma**: Binary gamma changes sign at the strike. OTM binary is long gamma (like vanilla), ITM binary is short gamma (unlike vanilla, which is always positive). 
+- **Vega**: Binary vega changes sign at ATM. If you hold a deep ITM YES share (say 85% probability), you have *negative* vega, meaning rising volatility in BTC hurts your position by increasing the chance of falling back OTM, while vanilla vega is always positive.
+- **Theta**: Deep ITM binary positions have *positive* theta, meaning time passing is good when you're nearly certain to be paid out. This forms a basis for a theta harvesting strategy, which is mathematically impossible in the case of traditional options pricing.
 
 ---
 
@@ -104,15 +106,16 @@ $$\sigma_{\text{interp}} = \sqrt{\frac{T_2 - T}{T_2 - T_1}\sigma_1^2 + \frac{T -
 
 ## Model assumptions
 
-These are stated explicitly so users can reason about model risk:
+This model is not perfect, and we state the assumptions explicitly so users can reason about model-level risk.
 
 - Underlying follows Geometric Brownian Motion (fat tails not captured)
-- Continuous hedging assumed; transaction costs not modeled
+- Idealized continuous hedging assumed (like Black-scholes), transaction costs not modeled
 - Oracle/resolution risk not priced (no analog in exchange-traded options)
 - Risk-free rate approximated at 5% annualized
 - Arbitrage between Polymarket and Deribit assumed possible but not frictionless
+- We assume these are analogous to European options, which is mostly accurate since these contracts are automatically used at expiry.
 
-A realistic mispricing threshold accounting for these frictions is ~3–5% on $|p_{PM} - p_{BS}|$.
+To account for these, we recommend using a mispricing threshold, and only recommend trades where $|p_{PM} - p_{BS}|$ exceeds roughly 3 to 5 percent.
 
 ---
 
