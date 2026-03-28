@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.quantpie.co.uk)",
+      "Bash(python greeks.py)",
+      "Bash(python3 C:/Users/Dell/Desktop/yhack26/greeks.py)",
+      "Bash(py C:/Users/Dell/Desktop/yhack26/greeks.py)",
+      "Bash(py -m pip install scipy -q)",
+      "Bash(uv --version)",
+      "Bash(uv init:*)",
+      "Bash(uv add:*)",
+      "Bash(uv run:*)"
+    ]
+  }
+}
