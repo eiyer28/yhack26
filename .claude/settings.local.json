@@ -20,7 +20,8 @@
       "WebFetch(domain:docs.polymarket.com)",
       "Bash(.venv/Scripts/python.exe -m pip install python-dotenv -q 2>&1)",
       "Bash(uv sync:*)",
-      "Bash(.venv/Scripts/python.exe polymarket.py 2>&1)"
+      "Bash(.venv/Scripts/python.exe polymarket.py 2>&1)",
+      "Bash(git -C /Users/donnynguyen/Programos/yhack26 ls-files --others --exclude-standard frontend/)"
     ]
   }
 }
