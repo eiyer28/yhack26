@@ -30,6 +30,11 @@ body {
 button { cursor: pointer; font-family: var(--font); }
 input { font-family: var(--font); }
 
+/* Hide native number spinners — replaced with custom chevrons in InlineNum */
+input[type=number].inline-num { -moz-appearance: textfield; }
+input[type=number].inline-num::-webkit-outer-spin-button,
+input[type=number].inline-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

@@ -269,7 +269,9 @@ export default function App() {
         {selected ? (
           <ContractDetail
             contract={selected}
+            contracts={filtered}
             onBack={() => setSelected(null)}
+            onSelect={setSelected}
             spotPrices={spotPrices}
           />
         ) : (

@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import GreeksDashboard from "./GreeksDashboard";
 import SpreadChart from "./SpreadChart";
 import PayoffSurface from "./PayoffSurface";
 import HedgeCalculator from "./HedgeCalculator";
 import WhatIf from "./WhatIf";
 
-const TABS = ["Overview", "Payoff Surface", "Hedge Calculator", "What-If"];
+const TABS = ["Overview", "Hedge Calculator", "What-If"];
 
 function ProbBar({ label, value, color }) {
   return (
@@ -62,10 +62,16 @@ function Empty({ label }) {
   );
 }
 
-export default function ContractDetail({ contract, onBack, spotPrices }) {
+export default function ContractDetail({ contract, contracts = [], onBack, onSelect, spotPrices }) {
   const [positionSize, setPositionSize] = useState(1000);
   const [hedgeType, setHedgeType]       = useState("delta");
   const [activeTab, setActiveTab]       = useState("Overview");
+
+  // Reset view when contract changes
+  useEffect(() => {
+    setActiveTab("Overview");
+    setPositionSize(1000);
+  }, [contract.id]);
 
   const [history, setHistory]           = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -74,6 +80,12 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
   const [hedgeLoading, setHedgeLoading] = useState(false);
 
   const marketId = contract.id;
+
+  const contractIndex = contracts.findIndex((c) => c.id === contract.id);
+  const hasPrev = contractIndex > 0;
+  const hasNext = contractIndex < contracts.length - 1;
+  function goPrev() { if (hasPrev) onSelect(contracts[contractIndex - 1]); }
+  function goNext() { if (hasNext) onSelect(contracts[contractIndex + 1]); }
 
   // Fetch history on mount (it's on the default Overview tab)
   useEffect(() => {
@@ -151,11 +163,53 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
             alignItems: "center",
             gap: 6,
             fontSize: 13,
+            cursor: "pointer",
           }}
         >
           <ArrowLeft size={14} />
           Back
         </button>
+        {contracts.length > 1 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button
+              onClick={goPrev}
+              disabled={!hasPrev}
+              title="Previous contract"
+              style={{
+                background: "var(--surface2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: "6px 8px",
+                color: hasPrev ? "var(--text2)" : "var(--border)",
+                display: "flex",
+                alignItems: "center",
+                cursor: hasPrev ? "pointer" : "default",
+              }}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span style={{ fontSize: 12, color: "var(--text2)", fontFamily: "var(--mono)", minWidth: 48, textAlign: "center" }}>
+              {contractIndex + 1} / {contracts.length}
+            </span>
+            <button
+              onClick={goNext}
+              disabled={!hasNext}
+              title="Next contract"
+              style={{
+                background: "var(--surface2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: "6px 8px",
+                color: hasNext ? "var(--text2)" : "var(--border)",
+                display: "flex",
+                alignItems: "center",
+                cursor: hasNext ? "pointer" : "default",
+              }}
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
         <h2 style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
           {contract.question}
         </h2>
@@ -396,10 +450,7 @@ export default function ContractDetail({ contract, onBack, spotPrices }) {
             </div>
           </div>
         )}
-        {activeTab === "Payoff Surface" && (
-          <PayoffSurface marketId={marketId} />
-        )}
-        {activeTab === "What-If" && (
+{activeTab === "What-If" && (
           <WhatIf contract={contract} spotPrices={spotPrices} />
         )}
         {activeTab === "Hedge Calculator" && (
