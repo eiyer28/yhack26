@@ -39,6 +39,8 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://prediction.eashan-iyer.com",
+        "http://yhack26-production-8d5a.up.railway.app",
+        "https://yhack26-9ebmeuzv5-eashan-iyers-projects.vercel.app",
     ],
     allow_methods=["GET"],
     allow_headers=["*"],
