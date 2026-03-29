@@ -570,3 +570,145 @@ def get_hedge(
         "residual_gamma":       residual_gamma,
         "note":                 note,
     }
+
+
+# ---------------------------------------------------------------------------
+# Theta harvest analyzer
+# ---------------------------------------------------------------------------
+
+@app.get("/api/markets/{market_id}/theta-harvest")
+def get_theta_harvest(
+    market_id: str,
+    position_size: int = Query(default=1000, ge=1),
+):
+    """
+    Theta harvest analysis for a Polymarket position.
+
+    Computes daily theta income for the position, finds a Deribit OTM option
+    to cap tail risk, and returns a P&L table across holding periods.
+
+    For an 'above' contract (call-like), tail risk is the underlying falling —
+    hedge with an OTM put (~85% of spot). For a 'below' contract, hedge with
+    an OTM call (~115% of spot).
+    """
+    contract, result = _resolve_contract(market_id)
+
+    spot  = result["_spot"]
+    sigma = result["_sigma"]
+
+    theta_daily_per_share = result["greeks"]["theta_daily"]
+    theta_daily_total     = theta_daily_per_share * position_size
+    is_positive_theta     = theta_daily_total > 0
+
+    # --- Find OTM tail-risk hedge on Deribit ---
+    # For 'above' binary (long YES is call-like): falling price is the tail risk → put hedge
+    # For 'below' binary (long YES is put-like):  rising price is the tail risk → call hedge
+    hedge_opt_type = "put" if contract.direction == "above" else "call"
+    otm_target     = spot * 0.85 if hedge_opt_type == "put" else spot * 1.15
+
+    instruments = deribit.get_instruments(contract.currency)
+    candidates  = [i for i in instruments if i["option_type"] == hedge_opt_type]
+
+    otm_hedge = None
+    if candidates:
+        target_ts_ms = datetime(
+            contract.resolution_date.year,
+            contract.resolution_date.month,
+            contract.resolution_date.day,
+            8, 0, 0, tzinfo=timezone.utc,
+        ).timestamp() * 1000
+
+        now_ms = datetime.now(timezone.utc).timestamp() * 1000
+
+        def _score(inst):
+            days_diff   = abs(inst["expiration_timestamp"] - target_ts_ms) / (86400 * 1000)
+            strike_diff = abs(inst["strike"] - otm_target) / otm_target
+            return days_diff * 0.5 + strike_diff * 100
+
+        best = min(candidates, key=_score)
+
+        hedge_price_usd = 0.0
+        try:
+            ob = deribit._get("get_order_book", {
+                "instrument_name": best["instrument_name"], "depth": 1
+            })
+            hedge_price_usd = ob.get("mark_price", 0) * spot
+        except Exception:
+            pass
+
+        breakeven_days = None
+        if hedge_price_usd > 0 and abs(theta_daily_total) > 1e-8:
+            breakeven_days = round(hedge_price_usd / abs(theta_daily_total), 1)
+
+        otm_hedge = {
+            "instrument":      best["instrument_name"],
+            "type":            hedge_opt_type,
+            "strike":          best["strike"],
+            "price_usd":       round(hedge_price_usd, 2),
+            "breakeven_days":  breakeven_days,
+        }
+
+    # --- P&L table ---
+    hedge_cost_once = otm_hedge["price_usd"] if otm_hedge else 0.0
+    pnl_table = []
+    for days in [1, 3, 7, 14, 30, 60, 90]:
+        gross = round(theta_daily_total * days, 4)
+        net   = round(gross - hedge_cost_once, 4)
+        pnl_table.append({
+            "days":        days,
+            "gross_theta": gross,
+            "hedge_cost":  round(hedge_cost_once, 2),
+            "net_pnl":     net,
+        })
+
+    return {
+        "is_positive_theta":      is_positive_theta,
+        "theta_daily_per_share":  round(theta_daily_per_share, 6),
+        "theta_daily_total":      round(theta_daily_total, 4),
+        "position_size":          position_size,
+        "otm_hedge":              otm_hedge,
+        "pnl_table":              pnl_table,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Vol smile
+# ---------------------------------------------------------------------------
+
+@app.get("/api/markets/{market_id}/vol-smile")
+def get_vol_smile(market_id: str):
+    """
+    Deribit implied vol smile for the expiry closest to the contract's
+    resolution date. Returns [{strike, iv_pct}] sorted by strike, plus the
+    contract's own strike and interpolated sigma for overlay.
+    """
+    contract, result = _resolve_contract(market_id)
+    instruments = deribit.get_instruments(contract.currency)
+
+    target_ts_ms = datetime(
+        contract.resolution_date.year, contract.resolution_date.month,
+        contract.resolution_date.day, 8, 0, 0, tzinfo=timezone.utc,
+    ).timestamp() * 1000
+
+    expiry_timestamps = sorted(set(i["expiration_timestamp"] for i in instruments))
+    if not expiry_timestamps:
+        raise HTTPException(status_code=404, detail="No Deribit instruments available")
+
+    closest_ts = min(expiry_timestamps, key=lambda ts: abs(ts - target_ts_ms))
+    expiry_date = datetime.fromtimestamp(closest_ts / 1000, tz=timezone.utc).date()
+
+    smile = deribit.get_expiry_smile(instruments, closest_ts)
+    if not smile:
+        raise HTTPException(status_code=404, detail="No vol smile data for this expiry")
+
+    return {
+        "currency":            contract.currency,
+        "expiry":              expiry_date.isoformat(),
+        "contract_strike":     contract.strike,
+        "contract_sigma_pct":  round(result["_sigma"] * 100, 2),
+        "spot":                result["_spot"],
+        "smile": [
+            {"strike": k, "iv_pct": round(v * 100, 2)}
+            for k, v in sorted(smile.items())
+        ],
+    }

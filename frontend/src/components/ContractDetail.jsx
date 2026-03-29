@@ -5,8 +5,11 @@ import SpreadChart from "./SpreadChart";
 import PayoffSurface from "./PayoffSurface";
 import HedgeCalculator from "./HedgeCalculator";
 import WhatIf from "./WhatIf";
+import ThetaHarvest from "./ThetaHarvest";
+import VolSmile from "./VolSmile";
+import ProbDensity from "./ProbDensity";
 
-const TABS = ["Overview", "Hedge Calculator", "What-If"];
+const TABS = ["Overview", "Curves", "Hedge Calculator", "Theta Harvest", "What-If"];
 
 function ProbBar({ label, value, color }) {
   return (
@@ -79,6 +82,9 @@ export default function ContractDetail({ contract, contracts = [], onBack, onSel
   const [hedge, setHedge]               = useState(null);
   const [hedgeLoading, setHedgeLoading] = useState(false);
 
+  const [thetaHarvest, setThetaHarvest]           = useState(null);
+  const [thetaHarvestLoading, setThetaHarvestLoading] = useState(false);
+
   const marketId = contract.id;
 
   const contractIndex = contracts.findIndex((c) => c.id === contract.id);
@@ -108,6 +114,18 @@ export default function ContractDetail({ contract, contracts = [], onBack, onSel
       .catch(() => setHedge(null))
       .finally(() => setHedgeLoading(false));
   }, [activeTab, marketId, positionSize, hedgeType]);
+
+  // Fetch theta harvest whenever that tab is active or position size changes
+  useEffect(() => {
+    if (activeTab !== "Theta Harvest") return;
+    setThetaHarvestLoading(true);
+    setThetaHarvest(null);
+    fetch(`/api/markets/${marketId}/theta-harvest?position_size=${positionSize}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => setThetaHarvest(d))
+      .catch(() => setThetaHarvest(null))
+      .finally(() => setThetaHarvestLoading(false));
+  }, [activeTab, marketId, positionSize]);
 
   // Build greeks display object from real backend data, scaled to position size
   const g = contract.greeks ?? {};
@@ -450,7 +468,26 @@ export default function ContractDetail({ contract, contracts = [], onBack, onSel
             </div>
           </div>
         )}
-{activeTab === "What-If" && (
+        {activeTab === "Curves" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            <VolSmile marketId={marketId} contract={contract} />
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 28 }}>
+              <ProbDensity contract={contract} spotPrices={spotPrices} />
+            </div>
+          </div>
+        )}
+        {activeTab === "Theta Harvest" && (
+          <div>
+            {thetaHarvestLoading && <Loading label="Computing theta harvest..." />}
+            {!thetaHarvestLoading && thetaHarvest && (
+              <ThetaHarvest data={thetaHarvest} contract={contract} />
+            )}
+            {!thetaHarvestLoading && !thetaHarvest && (
+              <Empty label="Could not compute theta harvest (no suitable Deribit instrument found)." />
+            )}
+          </div>
+        )}
+        {activeTab === "What-If" && (
           <WhatIf contract={contract} spotPrices={spotPrices} />
         )}
         {activeTab === "Hedge Calculator" && (
