@@ -37,7 +37,8 @@
       "Bash(npm uninstall:*)",
       "Bash(curl -s \"http://localhost:8000/api/markets/will-bitcoin-dip-to-64k-on-march-28/surface-plot\")",
       "WebFetch(domain:prediction.eashan-iyer.com)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(node -e \"require\\(''katex''\\); console.log\\(''ok''\\)\")"
     ]
   }
 }

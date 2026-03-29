@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Activity } from "lucide-react";
 import ContractTable from "./components/ContractTable";
 import ContractDetail from "./components/ContractDetail";
+import About from "./components/About";
 import "./App.css";
 
-function Header({ onRefresh, spotPrices, loading }) {
+function Header({ onRefresh, spotPrices, loading, view, onViewChange }) {
   return (
     <header
       style={{
@@ -43,6 +44,28 @@ function Header({ onRefresh, spotPrices, loading }) {
         >
           Beta
         </span>
+      </div>
+
+      {/* Nav */}
+      <div style={{ display: "flex", gap: 4 }}>
+        {["Markets", "About"].map((v) => (
+          <button
+            key={v}
+            onClick={() => onViewChange(v)}
+            style={{
+              background: "none",
+              border: "none",
+              borderBottom: `2px solid ${view === v ? "var(--accent)" : "transparent"}`,
+              padding: "6px 14px",
+              color: view === v ? "var(--accent)" : "var(--text2)",
+              fontWeight: view === v ? 600 : 400,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            {v}
+          </button>
+        ))}
       </div>
 
       {/* Live spot prices from Deribit */}
@@ -217,6 +240,7 @@ function Disclaimer() {
 }
 
 export default function App() {
+  const [view, setView] = useState("Markets");
   const [selected, setSelected] = useState(null);
   const [query, setQuery] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("All");
@@ -225,6 +249,11 @@ export default function App() {
   const [spotPrices, setSpotPrices] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  function handleViewChange(v) {
+    setView(v);
+    if (v === "Markets") setSelected(null);
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -263,10 +292,12 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Header onRefresh={fetchData} spotPrices={spotPrices} loading={loading} />
+      <Header onRefresh={fetchData} spotPrices={spotPrices} loading={loading} view={view} onViewChange={handleViewChange} />
 
       <main style={{ flex: 1, padding: "24px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
-        {selected ? (
+        {view === "About" ? (
+          <About />
+        ) : selected ? (
           <ContractDetail
             contract={selected}
             contracts={filtered}
