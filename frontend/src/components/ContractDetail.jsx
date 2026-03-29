@@ -475,7 +475,7 @@ export default function ContractDetail({ contract, contracts = [], onBack, onSel
               ))}
             </div>
             {hedgeLoading && <Loading label="Computing hedge..." />}
-            {!hedgeLoading && hedge && <HedgeCalculator hedge={hedge} contract={contract} />}
+            {!hedgeLoading && hedge && <HedgeCalculator hedge={hedge} contract={contract} positionSize={positionSize} />}
             {!hedgeLoading && !hedge && <Empty label="Could not compute hedge (no suitable Deribit instrument found)." />}
           </div>
         )}
