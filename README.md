@@ -1,6 +1,6 @@
 # PolyGreeks
 
-**TradFi-style risk analytics for Polymarket prediction markets.**
+**TradFi-style Greeks for Polymarket cryptocurrency markets.**
 
 PolyGreeks prices Polymarket crypto contracts as cash-or-nothing binary European options, sources implied volatility from live Deribit options markets, and computes the full set of Greeks for any position. The spread between Polymarket's crowd-implied probability and the model-implied probability is a measurable mispricing that can be exploited with dynamic hedging, and the Greeks tell you exactly how to construct those hedges.
 
@@ -165,6 +165,19 @@ We recommend using a mispricing threshold and only acting on trades where $|p_{P
 | Compute | Python (FastAPI, scipy) |
 | Data | Polymarket Gamma API + Deribit public REST |
 | Hosting | Vercel (frontend) + Railway (API) |
+
+---
+
+## Future directions
+
+- Non-crypto markets: extend the framework to Polymarket political and macro contracts using equity or rates vol as the underlying. This requires generalized vol sourcing not possible with Deribit.
+- Live hedge execution — integrate Deribit OAuth to allow one-click submission of the suggested hedge directly from the dashboard, closing the loop between analytics and execution
+- Continuous Hedging Bot: Create a bot that is able to programatically execute opportunities. This could use an openclaw agent to periodically check the markets, and then run the above mentioned live hedge execution, continuously hedging to update in the case of gamma changing the delta due to large changes in spot price, and similar for vega.
+- Jump-diffusion pricing: replace GBM with a Merton jump-diffusion model to better capture the fat-tailed behavior of crypto near major catalysts (ETF approvals, protocol upgrades, macro events)
+- Oracle and resolution risk premium: model the additional risk that a contract resolves ambiguously or is disputed, which is unpriced in the current framework and represents a systematic source of spread
+- Multi-leg portfolio Greeks: aggregate Greeks across multiple open Polymarket positions and their Deribit hedges into a single portfolio risk view, enabling book-level risk management at an institutional sophistication level.
+- Realized vol vs implied vol signal: surface the spread between Deribit implied vol and realized vol as a secondary signal, since when implied vol is rich relative to realized, shorting vega on Deribit becomes more attractive alongside the Polymarket leg
+- Backtesting engine — run the mispricing strategy historically against resolved Polymarket contracts to measure Sharpe, drawdown, and hit rate across different threshold parameters
 
 ---
 
